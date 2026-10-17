@@ -1,10 +1,11 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { calcularMetas, OBJETIVOS, type Objetivo, type Perfil, type Sexo } from '../lib/calc'
 import { db, exportarBackup, hojeISO, importarBackup, type PerfilSalvo } from '../lib/db'
+import type { Avisar } from '../App'
 
 interface Props {
   perfil: PerfilSalvo | undefined
-  avisar: (texto: string) => void
+  avisar: Avisar
   aoSalvar: () => void
 }
 
@@ -149,22 +150,22 @@ export function PerfilTela({ perfil, avisar, aoSalvar }: Props) {
             <h2 id="t-metas">Suas metas diárias</h2>
             <dl className="metas-lista">
               <dt>Calorias</dt>
-              <dd>{metas.kcal} kcal</dd>
+              <dd>{metas.kcal.toLocaleString('pt-BR')} kcal</dd>
               <dt>Proteína</dt>
-              <dd>{metas.proteinaG} g</dd>
+              <dd>{metas.proteinaG.toLocaleString('pt-BR')} g</dd>
               <dt>Carboidrato</dt>
-              <dd>{metas.carboidratoG} g</dd>
+              <dd>{metas.carboidratoG.toLocaleString('pt-BR')} g</dd>
               <dt>Gordura</dt>
-              <dd>{metas.gorduraG} g</dd>
+              <dd>{metas.gorduraG.toLocaleString('pt-BR')} g</dd>
               <dt>Gordura saturada (máximo)</dt>
-              <dd>{metas.gorduraSaturadaMaxG} g</dd>
+              <dd>{metas.gorduraSaturadaMaxG.toLocaleString('pt-BR')} g</dd>
               <dt>Fibras (mínimo)</dt>
-              <dd>{metas.fibraG} g</dd>
+              <dd>{metas.fibraG.toLocaleString('pt-BR')} g</dd>
               <dt>Água para beber</dt>
               <dd>{(metas.aguaBeberMl / 1000).toLocaleString('pt-BR')} L</dd>
             </dl>
             <p className="ajuda" style={{ marginTop: 12 }}>
-              Seu metabolismo em repouso é de cerca de {metas.basal} kcal e seu gasto num dia sem treino, de {metas.gastoBase} kcal.
+              Seu metabolismo em repouso é de cerca de {metas.basal.toLocaleString('pt-BR')} kcal e seu gasto num dia sem treino, de {metas.gastoBase.toLocaleString('pt-BR')} kcal.
               Os treinos entram depois, somados à parte.
             </p>
           </section>

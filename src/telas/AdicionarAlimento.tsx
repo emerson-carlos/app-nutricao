@@ -1,15 +1,17 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { ChevronLeft, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { alimentoDoRotulo, buscarAlimentos, nutrientesDe, type Alimento, type Rotulo } from '../lib/alimentos'
 import { db, type Medida, type Refeicao } from '../lib/db'
 import { medidaPadrao, medidasIBGE } from '../lib/medidas'
+import type { Avisar } from '../App'
 
 interface Props {
   data: string
   refeicao: Refeicao
   discreto: boolean
   aoFechar: () => void
-  avisar: (texto: string) => void
+  avisar: Avisar
 }
 
 const fmt = (n: number) => Math.round(n).toLocaleString('pt-BR')
@@ -29,26 +31,44 @@ export function AdicionarAlimento({ data, refeicao, discreto, aoFechar, avisar }
 
   const resultados = useMemo(() => buscarAlimentos(busca), [busca])
 
+  // Fecha descendo pelo mesmo caminho por onde entrou; com "menos movimento", fecha na hora.
+  function fechar() {
+    const el = janela.current
+    if (!el) return
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return el.close()
+    el.classList.add('saindo')
+    setTimeout(() => el.close(), 220)
+  }
+
   return (
-    <dialog ref={janela} className="janela" aria-labelledby="t-adicionar" onClose={aoFechar}>
+    <dialog
+      ref={janela}
+      className="janela"
+      aria-labelledby="t-adicionar"
+      onClose={aoFechar}
+      onCancel={(e) => {
+        e.preventDefault()
+        fechar()
+      }}
+    >
       <div className="janela-corpo">
         <div className="janela-topo">
           {(escolhido || cadastrando) && (
             <button
               type="button"
-              className="botao botao-icone"
+              className="botao botao-icone botao-fantasma"
               aria-label="Voltar para a busca"
               onClick={() => {
                 setEscolhido(null)
                 setCadastrando(false)
               }}
             >
-              ‹
+              <ChevronLeft size={24} aria-hidden="true" />
             </button>
           )}
           <h2 id="t-adicionar">{escolhido ? escolhido.nome : cadastrando ? 'Cadastrar pelo rótulo' : `Adicionar em ${refeicao}`}</h2>
-          <button type="button" className="botao botao-icone" aria-label="Fechar" onClick={() => janela.current?.close()}>
-            ×
+          <button type="button" className="botao botao-icone botao-fantasma" aria-label="Fechar" onClick={fechar}>
+            <X size={24} aria-hidden="true" />
           </button>
         </div>
 
@@ -59,7 +79,7 @@ export function AdicionarAlimento({ data, refeicao, discreto, aoFechar, avisar }
             aoConfirmar={async (gramas, medida) => {
               await db.registros.add({ data, refeicao, alimentoId: escolhido.id, gramas, medida, criadoEm: Date.now() })
               avisar(`${escolhido.nome} adicionado em ${refeicao}.`)
-              janela.current?.close()
+              fechar()
             }}
           />
         ) : cadastrando ? (
@@ -75,7 +95,19 @@ export function AdicionarAlimento({ data, refeicao, discreto, aoFechar, avisar }
           <>
             <div className="campo">
               <label htmlFor="busca">Buscar alimento</label>
-              <input id="busca" type="search" autoFocus autoComplete="off" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Ex.: arroz cozido, banana, ovo" />
+              <div className="campo-busca">
+                <Search size={20} aria-hidden="true" />
+                <input
+                  id="busca"
+                  type="search"
+                  autoFocus
+                  autoComplete="off"
+                  enterKeyHint="search"
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  placeholder="Ex.: arroz cozido, banana, ovo"
+                />
+              </div>
               <p className="ajuda">Base TACO (Unicamp), com 591 alimentos, e medidas caseiras do IBGE.</p>
             </div>
             <p className="visualmente-oculto" aria-live="polite">
@@ -88,7 +120,7 @@ export function AdicionarAlimento({ data, refeicao, discreto, aoFechar, avisar }
                     {a.nome}
                     <small>
                       {a.grupo}
-                      {!discreto && ` · ${fmt(a.kcal)} kcal em 100 g`}
+                      {!discreto && `, ${fmt(a.kcal)} kcal em 100 g`}
                     </small>
                   </button>
                 </li>

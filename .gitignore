@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Skills de design de terceiros: reinstale com `npx skills experimental_install` (lista em skills-lock.json)
+.claude/skills/
