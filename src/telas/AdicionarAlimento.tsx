@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { buscarAlimentos, nutrientesDe, type Alimento } from '../lib/alimentos'
+import { alimentoDoRotulo, buscarAlimentos, nutrientesDe, type Alimento, type Rotulo } from '../lib/alimentos'
 import { db, type Medida, type Refeicao } from '../lib/db'
 import { medidaPadrao, medidasIBGE } from '../lib/medidas'
 
@@ -21,6 +21,7 @@ export function AdicionarAlimento({ data, refeicao, discreto, aoFechar, avisar }
   const janela = useRef<HTMLDialogElement>(null)
   const [busca, setBusca] = useState('')
   const [escolhido, setEscolhido] = useState<Alimento | null>(null)
+  const [cadastrando, setCadastrando] = useState(false)
 
   useEffect(() => {
     janela.current?.showModal()
@@ -32,12 +33,20 @@ export function AdicionarAlimento({ data, refeicao, discreto, aoFechar, avisar }
     <dialog ref={janela} className="janela" aria-labelledby="t-adicionar" onClose={aoFechar}>
       <div className="janela-corpo">
         <div className="janela-topo">
-          {escolhido && (
-            <button type="button" className="botao botao-icone" aria-label="Voltar para a busca" onClick={() => setEscolhido(null)}>
+          {(escolhido || cadastrando) && (
+            <button
+              type="button"
+              className="botao botao-icone"
+              aria-label="Voltar para a busca"
+              onClick={() => {
+                setEscolhido(null)
+                setCadastrando(false)
+              }}
+            >
               ‹
             </button>
           )}
-          <h2 id="t-adicionar">{escolhido ? escolhido.nome : `Adicionar em ${refeicao}`}</h2>
+          <h2 id="t-adicionar">{escolhido ? escolhido.nome : cadastrando ? 'Cadastrar pelo rótulo' : `Adicionar em ${refeicao}`}</h2>
           <button type="button" className="botao botao-icone" aria-label="Fechar" onClick={() => janela.current?.close()}>
             ×
           </button>
@@ -51,6 +60,15 @@ export function AdicionarAlimento({ data, refeicao, discreto, aoFechar, avisar }
               await db.registros.add({ data, refeicao, alimentoId: escolhido.id, gramas, medida, criadoEm: Date.now() })
               avisar(`${escolhido.nome} adicionado em ${refeicao}.`)
               janela.current?.close()
+            }}
+          />
+        ) : cadastrando ? (
+          <CadastroRotulo
+            nomeInicial={busca}
+            aoSalvar={(a) => {
+              avisar(`${a.nome} cadastrado.`)
+              setCadastrando(false)
+              setEscolhido(a)
             }}
           />
         ) : (
@@ -77,6 +95,9 @@ export function AdicionarAlimento({ data, refeicao, discreto, aoFechar, avisar }
               ))}
             </ul>
             {busca && resultados.length === 0 && <p>Nenhum alimento encontrado. Tente uma palavra só, como "frango".</p>}
+            <button type="button" className="botao largura-total" style={{ marginTop: 16 }} onClick={() => setCadastrando(true)}>
+              Não achou? Cadastrar pelo rótulo
+            </button>
           </>
         )}
       </div>
@@ -222,6 +243,79 @@ function PorcaoForm({ alimento, discreto, aoConfirmar, medidas }: PorcaoProps & 
 
       <button type="submit" className="botao botao-principal largura-total">
         Adicionar
+      </button>
+    </form>
+  )
+}
+
+const CAMPOS_ROTULO: { chave: Exclude<keyof Rotulo, 'nome'>; rotulo: string; obrigatorio?: boolean }[] = [
+  { chave: 'porcaoG', rotulo: 'Porção (g ou ml)', obrigatorio: true },
+  { chave: 'kcal', rotulo: 'Valor energético (kcal)', obrigatorio: true },
+  { chave: 'carb', rotulo: 'Carboidratos (g)' },
+  { chave: 'prot', rotulo: 'Proteínas (g)' },
+  { chave: 'gord', rotulo: 'Gorduras totais (g)' },
+  { chave: 'sat', rotulo: 'Gorduras saturadas (g)' },
+  { chave: 'fibra', rotulo: 'Fibra alimentar (g)' },
+  { chave: 'sodio', rotulo: 'Sódio (mg)' },
+]
+
+function CadastroRotulo({ nomeInicial, aoSalvar }: { nomeInicial: string; aoSalvar: (a: Alimento) => void }) {
+  const [nome, setNome] = useState(nomeInicial)
+  const [valores, setValores] = useState<Record<string, string>>({})
+  const [erro, setErro] = useState('')
+  const valor = (chave: string) => (valores[chave] ? numero(valores[chave]) : 0)
+
+  async function salvar(e: FormEvent) {
+    e.preventDefault()
+    if (!nome.trim()) return setErro('Dê um nome para o alimento.')
+    if (!(valor('porcaoG') > 0)) return setErro('Informe o tamanho da porção que está no rótulo.')
+    if (!valores.kcal) return setErro('Informe o valor energético da porção.')
+    const rotulo = Object.fromEntries(CAMPOS_ROTULO.map((c) => [c.chave, valor(c.chave)])) as Omit<Rotulo, 'nome'>
+    const a = alimentoDoRotulo({ ...rotulo, nome }, Date.now())
+    await db.transaction('rw', db.alimentosProprios, db.medidas, async () => {
+      await db.alimentosProprios.add({ ...a, criadoEm: Date.now() })
+      await db.medidas.add({ alimentoId: a.id, nome: 'Porção do rótulo', gramas: rotulo.porcaoG, fonte: 'Rótulo' })
+    })
+    aoSalvar(a)
+  }
+
+  return (
+    <form onSubmit={salvar} noValidate>
+      <p className="ajuda" style={{ marginBottom: 16 }}>
+        Copie a tabela nutricional da embalagem, na coluna da porção. O app converte para 100 g. Em líquidos, 1 ml conta como 1 g,
+        o que dá diferença pequena para leite e sucos.
+      </p>
+      {erro && (
+        <p className="erro" role="alert">
+          {erro}
+        </p>
+      )}
+      <div className="campo">
+        <label htmlFor="rotulo-nome">Nome</label>
+        <input id="rotulo-nome" autoComplete="off" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Whey protein baunilha" />
+      </div>
+      <div className="dupla">
+        {CAMPOS_ROTULO.map((c) => (
+          <div className="campo" key={c.chave}>
+            <label htmlFor={`rotulo-${c.chave}`}>
+              {c.rotulo}
+              {!c.obrigatorio && <span className="visualmente-oculto"> (opcional)</span>}
+            </label>
+            <input
+              id={`rotulo-${c.chave}`}
+              inputMode="decimal"
+              autoComplete="off"
+              value={valores[c.chave] ?? ''}
+              onChange={(e) => setValores({ ...valores, [c.chave]: e.target.value.replace(/[^\d,.]/g, '') })}
+            />
+          </div>
+        ))}
+      </div>
+      <p className="ajuda" style={{ marginBottom: 16 }}>
+        Campo em branco conta como zero.
+      </p>
+      <button type="submit" className="botao botao-principal largura-total">
+        Salvar e continuar
       </button>
     </form>
   )

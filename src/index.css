@@ -391,6 +391,13 @@ fieldset.campo {
   gap: 12px;
 }
 
+/* Quando um rótulo quebra em duas linhas, os campos lado a lado continuam alinhados. */
+.dupla > .campo {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
 .erro {
   color: var(--tinta);
   border-left: 4px solid var(--tinta);

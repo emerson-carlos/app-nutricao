@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useState } from 'react'
+import { registrarProprios } from './lib/alimentos'
 import { db } from './lib/db'
 import { Hoje } from './telas/Hoje'
 import { PerfilTela } from './telas/PerfilTela'
@@ -8,6 +9,7 @@ type Tela = 'hoje' | 'perfil'
 
 export default function App() {
   const perfil = useLiveQuery(() => db.perfil.get('eu'), [], null)
+  const proprios = useLiveQuery(() => db.alimentosProprios.toArray(), [], null)
   const [tela, setTela] = useState<Tela>('hoje')
   const [status, setStatus] = useState('')
 
@@ -18,7 +20,8 @@ export default function App() {
   }, [status])
 
   // null = ainda carregando; undefined = primeiro uso, sem perfil.
-  if (perfil === null) return null
+  if (perfil === null || proprios === null) return null
+  registrarProprios(proprios)
 
   const primeiroUso = perfil === undefined
   const telaAtual: Tela = primeiroUso ? 'perfil' : tela

@@ -1,4 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
+import type { Alimento } from './alimentos'
 import type { Perfil } from './calc'
 
 export const REFEICOES = ['Café da manhã', 'Lanche da manhã', 'Almoço', 'Lanche da tarde', 'Jantar', 'Ceia'] as const
@@ -29,6 +30,12 @@ export interface Medida {
   fonte: string
 }
 
+// Alimento cadastrado por você a partir do rótulo. Guardado por 100 g, como os da TACO.
+// O id é um número grande (Date.now()) para nunca coincidir com os ids da TACO.
+export interface AlimentoProprio extends Alimento {
+  criadoEm: number
+}
+
 export interface PerfilSalvo extends Perfil {
   id: 'eu'
   atualizadoEm: number
@@ -39,6 +46,7 @@ export const db = new Dexie('app-nutricao') as Dexie & {
   registros: EntityTable<Registro, 'id'>
   agua: EntityTable<Agua, 'data'>
   medidas: EntityTable<Medida, 'id'>
+  alimentosProprios: EntityTable<AlimentoProprio, 'id'>
 }
 
 db.version(1).stores({
@@ -48,29 +56,36 @@ db.version(1).stores({
   medidas: '++id, alimentoId',
 })
 
+db.version(2).stores({
+  alimentosProprios: 'id, nome',
+})
+
 export function hojeISO(d = new Date()): string {
   const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
   return local.toISOString().slice(0, 10)
 }
 
 export async function exportarBackup(): Promise<string> {
-  const [perfil, registros, agua, medidas] = await Promise.all([
+  const [perfil, registros, agua, medidas, alimentosProprios] = await Promise.all([
     db.perfil.toArray(),
     db.registros.toArray(),
     db.agua.toArray(),
     db.medidas.toArray(),
+    db.alimentosProprios.toArray(),
   ])
-  return JSON.stringify({ app: 'app-nutricao', versao: 1, exportadoEm: new Date().toISOString(), perfil, registros, agua, medidas })
+  return JSON.stringify({ app: 'app-nutricao', versao: 2, exportadoEm: new Date().toISOString(), perfil, registros, agua, medidas, alimentosProprios })
 }
 
 export async function importarBackup(texto: string): Promise<void> {
   const dados = JSON.parse(texto)
   if (dados?.app !== 'app-nutricao') throw new Error('Este arquivo não é um backup do app.')
-  await db.transaction('rw', [db.perfil, db.registros, db.agua, db.medidas], async () => {
-    await Promise.all([db.perfil.clear(), db.registros.clear(), db.agua.clear(), db.medidas.clear()])
+  const tabelas = [db.perfil, db.registros, db.agua, db.medidas, db.alimentosProprios]
+  await db.transaction('rw', tabelas, async () => {
+    await Promise.all(tabelas.map((t) => t.clear()))
     await db.perfil.bulkPut(dados.perfil ?? [])
     await db.registros.bulkPut(dados.registros ?? [])
     await db.agua.bulkPut(dados.agua ?? [])
     await db.medidas.bulkPut(dados.medidas ?? [])
+    await db.alimentosProprios.bulkPut(dados.alimentosProprios ?? [])
   })
 }

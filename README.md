@@ -6,6 +6,7 @@ App pessoal de nutrição e treino, instalável no celular (PWA). Os dados ficam
 
 - Perfil com objetivo editável e metas diárias de calorias, proteína, carboidrato, gordura, gordura saturada, fibras e água.
 - Registro das refeições em gramas ou em medidas caseiras (as do IBGE já vêm prontas; você pode criar outras).
+- Cadastro de alimento pelo rótulo da embalagem (whey, produtos de marca).
 - Contador de água em copos de 250 ml.
 - Modo discreto, que esconde os números.
 - Backup e restauração em arquivo.

@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { calcularMetas } from '../lib/calc'
-import { alimento, nutrientesDe, somar, ZERO, type Nutrientes } from '../lib/alimentos'
+import { alimento, nutrientesDe, somar, ZERO, type Alimento, type Nutrientes } from '../lib/alimentos'
 import { db, hojeISO, REFEICOES, type PerfilSalvo, type Refeicao, type Registro } from '../lib/db'
 import { AdicionarAlimento } from './AdicionarAlimento'
 
@@ -52,13 +52,14 @@ export function Hoje({ perfil, avisar }: Props) {
   const discreto = perfil.modoDiscreto
   const ehHoje = data === hojeISO()
 
-  const porRefeicao = new Map<Refeicao, Registro[]>()
+  // Um registro cujo alimento não existe mais (ex.: backup antigo) fica de fora em vez de quebrar a tela.
+  const porRefeicao = new Map<Refeicao, { r: Registro; a: Alimento }[]>()
   let total: Nutrientes = ZERO
   for (const r of registros) {
     const a = alimento(r.alimentoId)
     if (!a) continue
     total = somar(total, nutrientesDe(a, r.gramas))
-    porRefeicao.set(r.refeicao, [...(porRefeicao.get(r.refeicao) ?? []), r])
+    porRefeicao.set(r.refeicao, [...(porRefeicao.get(r.refeicao) ?? []), { r, a }])
   }
   const aguaMl = agua?.ml ?? 0
   const restam = metas.kcal - total.kcal
@@ -163,7 +164,7 @@ export function Hoje({ perfil, avisar }: Props) {
         <h2 id="t-refeicoes">Refeições</h2>
         {REFEICOES.map((ref) => {
           const itens = porRefeicao.get(ref) ?? []
-          const kcal = itens.reduce((s, r) => s + nutrientesDe(alimento(r.alimentoId)!, r.gramas).kcal, 0)
+          const kcal = itens.reduce((s, { r, a }) => s + nutrientesDe(a, r.gramas).kcal, 0)
           return (
             <div className="refeicao" key={ref}>
               <div className="refeicao-topo">
@@ -177,8 +178,7 @@ export function Hoje({ perfil, avisar }: Props) {
               </div>
               {itens.length > 0 && (
                 <ul className="itens">
-                  {itens.map((r) => {
-                    const a = alimento(r.alimentoId)!
+                  {itens.map(({ r, a }) => {
                     const porcao = r.medida ? `${r.medida.quantidade.toLocaleString('pt-BR')} × ${r.medida.nome} (${fmt(r.gramas)} g)` : `${fmt(r.gramas)} g`
                     return (
                       <li key={r.id}>

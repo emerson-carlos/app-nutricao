@@ -15,6 +15,7 @@ export interface Alimento {
 }
 
 export const ALIMENTOS = taco as Alimento[]
+export const GRUPO_PROPRIO = 'Seus alimentos'
 const porId = new Map(ALIMENTOS.map((a) => [a.id, a]))
 
 export function alimento(id: number): Alimento | undefined {
@@ -25,7 +26,45 @@ function normalizar(t: string): string {
   return t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 }
 
-const indice = ALIMENTOS.map((a) => ({ a, texto: normalizar(a.nome) }))
+let indice = ALIMENTOS.map((a) => ({ a, texto: normalizar(a.nome) }))
+
+// Os alimentos cadastrados pelo rótulo ficam no banco do aparelho. O App chama esta
+// função sempre que a lista muda, para que busca e cálculo os enxerguem como os da TACO.
+export function registrarProprios(proprios: Alimento[]) {
+  for (const [id, a] of porId) if (a.grupo === GRUPO_PROPRIO) porId.delete(id)
+  for (const a of proprios) porId.set(a.id, a)
+  indice = [...proprios, ...ALIMENTOS].map((a) => ({ a, texto: normalizar(a.nome) }))
+}
+
+export interface Rotulo {
+  nome: string
+  porcaoG: number
+  kcal: number
+  prot: number
+  carb: number
+  gord: number
+  sat: number
+  fibra: number
+  sodio: number
+}
+
+// O rótulo brasileiro informa por porção; a TACO, por 100 g. Converte para 100 g.
+export function alimentoDoRotulo(r: Rotulo, id: number): Alimento {
+  const f = 100 / r.porcaoG
+  const arred = (n: number) => Math.round(n * f * 10) / 10
+  return {
+    id,
+    nome: r.nome.trim(),
+    grupo: GRUPO_PROPRIO,
+    kcal: arred(r.kcal),
+    prot: arred(r.prot),
+    gord: arred(r.gord),
+    carb: arred(r.carb),
+    fibra: arred(r.fibra),
+    sat: arred(r.sat),
+    sodio: arred(r.sodio),
+  }
+}
 
 // Busca por todas as palavras digitadas, sem ligar para acentos. Nomes que começam
 // com a primeira palavra aparecem primeiro.
