@@ -41,3 +41,12 @@ describe('peixe', () => {
     expect(buscarAlimentos('peixe assado').map((a) => a.nome)).toContain('Merluza, filé, assado')
   })
 })
+
+describe('tilápia', () => {
+  it('vem da USDA, aparece na busca por peixe e usa as medidas de peixe de água doce do IBGE', () => {
+    const t = buscarAlimentos('tilapia')
+    expect(t.map((a) => a.id)).toEqual([1002, 1001])
+    expect(buscarAlimentos('peixe', 100).map((a) => a.id)).toContain(1001)
+    expect(medidasIBGE(1001).find((m) => m.nome === 'Filé')?.gramas).toBe(120)
+  })
+})

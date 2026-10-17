@@ -1,6 +1,8 @@
+import complementares from '../data/complementares.json'
 import taco from '../data/taco.json'
 
 // TACO 4ª edição (NEPA/Unicamp, 2011). Valores por 100 g da parte comestível.
+// Alimentos comuns que a TACO não tem vêm de complementares.json, com a fonte indicada.
 export interface Alimento {
   id: number
   nome: string
@@ -12,9 +14,10 @@ export interface Alimento {
   fibra: number | null
   sat: number | null
   sodio: number | null
+  fonte?: string
 }
 
-export const ALIMENTOS = taco as Alimento[]
+export const ALIMENTOS = [...taco, ...complementares] as Alimento[]
 export const GRUPO_PROPRIO = 'Seus alimentos'
 const porId = new Map(ALIMENTOS.map((a) => [a.id, a]))
 

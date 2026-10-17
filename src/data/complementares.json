@@ -1,0 +1,28 @@
+[
+  {
+    "id": 1001,
+    "nome": "Tilápia, filé, grelhado ou assado",
+    "grupo": "Pescados e frutos do mar",
+    "fonte": "USDA",
+    "kcal": 128.0,
+    "prot": 26.1,
+    "gord": 2.7,
+    "carb": 0.0,
+    "fibra": 0.0,
+    "sat": 0.9,
+    "sodio": 56.0
+  },
+  {
+    "id": 1002,
+    "nome": "Tilápia, filé, cru",
+    "grupo": "Pescados e frutos do mar",
+    "fonte": "USDA",
+    "kcal": 96.0,
+    "prot": 20.1,
+    "gord": 1.7,
+    "carb": 0.0,
+    "fibra": 0.0,
+    "sat": 0.6,
+    "sodio": 52.0
+  }
+]

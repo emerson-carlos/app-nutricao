@@ -95,7 +95,7 @@ export const EXEMPLOS: Record<'cafe' | 'almoco' | 'lanche' | 'jantar', Porcao[]>
   ],
   jantar: [
     [88, 'Fatia', 2],
-    [301, 'Filé'],
+    [1001, 'Filé'],
     [100, 'Pires'],
     [157, 'Unidade'],
   ],

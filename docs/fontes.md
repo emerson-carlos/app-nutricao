@@ -14,6 +14,7 @@ Todos os números do app são estimativas (erro típico de 10% a 20%). O app nã
 | 8 | Fibras | Pelo menos 25 g por dia | OMS 2023 |
 | 9 | Água para beber | 80% de 2,5 L (homens) ou 2,0 L (mulheres), mais 600 ml por hora de treino | EFSA 2010, adotada pelas Nordic Nutrition Recommendations 2023; extra do treino: meio da faixa de 0,4 a 0,8 L/h do ACSM |
 | 10 | Alimentos | 591 alimentos, valores por 100 g | TACO 4ª edição (NEPA/Unicamp, 2011), via `raulfdm/taco-api` (MIT), conferida por amostragem com a planilha original |
+| 11 | Alimentos que faltam na TACO | Tilápia grelhada/assada (128 kcal, 26,1 g de proteína em 100 g) e crua, em `src/data/complementares.json`, com as medidas de "peixe de água doce" do IBGE | USDA FoodData Central, SR Legacy: *Fish, tilapia, cooked, dry heat* e *Fish, tilapia, raw* (fdcId 175176). A TBCA (USP) tem tilápia, mas o site não abriu daqui |
 
 ## Medidas caseiras
 

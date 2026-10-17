@@ -108,7 +108,7 @@ export function AdicionarAlimento({ data, refeicao, discreto, aoFechar, avisar }
                   placeholder="Ex.: arroz cozido, banana, ovo"
                 />
               </div>
-              <p className="ajuda">Base TACO (Unicamp), com 591 alimentos, e medidas caseiras do IBGE.</p>
+              <p className="ajuda">Base TACO (Unicamp), com 591 alimentos, mais a tilápia (USDA), e medidas caseiras do IBGE.</p>
             </div>
             <p className="visualmente-oculto" aria-live="polite">
               {busca ? `${resultados.length} resultados` : ''}
@@ -119,7 +119,7 @@ export function AdicionarAlimento({ data, refeicao, discreto, aoFechar, avisar }
                   <button type="button" onClick={() => setEscolhido(a)}>
                     {a.nome}
                     <small>
-                      {apelido(a.id) ? `Serve para ${apelido(a.id)}` : a.grupo}
+                      {apelido(a.id) ? `Serve para ${apelido(a.id)}` : a.fonte ? `${a.grupo} (${a.fonte})` : a.grupo}
                       {!discreto && `, ${fmt(a.kcal)} kcal em 100 g`}
                     </small>
                   </button>
