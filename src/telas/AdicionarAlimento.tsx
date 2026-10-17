@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronLeft, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { alimentoDoRotulo, buscarAlimentos, nutrientesDe, type Alimento, type Rotulo } from '../lib/alimentos'
+import { alimentoDoRotulo, apelido, buscarAlimentos, nutrientesDe, type Alimento, type Rotulo } from '../lib/alimentos'
 import { db, type Medida, type Refeicao } from '../lib/db'
 import { medidaPadrao, medidasIBGE } from '../lib/medidas'
 import type { Avisar } from '../App'
@@ -119,7 +119,7 @@ export function AdicionarAlimento({ data, refeicao, discreto, aoFechar, avisar }
                   <button type="button" onClick={() => setEscolhido(a)}>
                     {a.nome}
                     <small>
-                      {a.grupo}
+                      {apelido(a.id) ? `Serve para ${apelido(a.id)}` : a.grupo}
                       {!discreto && `, ${fmt(a.kcal)} kcal em 100 g`}
                     </small>
                   </button>

@@ -26,14 +26,27 @@ function normalizar(t: string): string {
   return t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 }
 
-let indice = ALIMENTOS.map((a) => ({ a, texto: normalizar(a.nome) }))
+// Preparos que a TACO não tem e que um alimento dela representa bem (sem a manteiga ou o
+// leite, que se registram à parte). Entram na busca: "purê" encontra a batata cozida.
+const APELIDOS: Record<number, string> = {
+  91: 'purê de batata',
+  64: 'purê de abóbora',
+}
+
+export function apelido(id: number): string | undefined {
+  return APELIDOS[id]
+}
+
+const textoBusca = (a: Alimento) => normalizar(a.nome + ' ' + (APELIDOS[a.id] ?? ''))
+
+let indice = ALIMENTOS.map((a) => ({ a, texto: textoBusca(a) }))
 
 // Os alimentos cadastrados pelo rótulo ficam no banco do aparelho. O App chama esta
 // função sempre que a lista muda, para que busca e cálculo os enxerguem como os da TACO.
 export function registrarProprios(proprios: Alimento[]) {
   for (const [id, a] of porId) if (a.grupo === GRUPO_PROPRIO) porId.delete(id)
   for (const a of proprios) porId.set(a.id, a)
-  indice = [...proprios, ...ALIMENTOS].map((a) => ({ a, texto: normalizar(a.nome) }))
+  indice = [...proprios, ...ALIMENTOS].map((a) => ({ a, texto: textoBusca(a) }))
 }
 
 export interface Rotulo {

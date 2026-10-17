@@ -1,18 +1,20 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { House, UserRound } from 'lucide-react'
+import { BookOpen, House, UserRound } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { registrarProprios } from './lib/alimentos'
 import { db } from './lib/db'
+import { Guia } from './telas/Guia'
 import { Hoje } from './telas/Hoje'
 import { PerfilTela } from './telas/PerfilTela'
 
-type Tela = 'hoje' | 'perfil'
+type Tela = 'hoje' | 'guia' | 'perfil'
 
 export type Avisar = (texto: string, desfazer?: () => void) => void
 
-// A tela atual fica no endereço (#perfil), para o botão Voltar do Android funcionar entre as abas.
+// A tela atual fica no endereço (#guia, #perfil), para o botão Voltar do Android funcionar entre as abas.
 function telaDoEndereco(): Tela | null {
   if (location.hash === '#perfil') return 'perfil'
+  if (location.hash === '#guia') return 'guia'
   if (location.hash === '') return 'hoje'
   return null // outros #, como o do link "Pular para o conteúdo", não trocam de tela
 }
@@ -43,8 +45,9 @@ export default function App() {
 
   function ir(t: Tela) {
     if (t === tela) return
-    history.pushState(null, '', t === 'perfil' ? '#perfil' : location.pathname + location.search)
+    history.pushState(null, '', t === 'hoje' ? location.pathname + location.search : `#${t}`)
     setTela(t)
+    scrollTo(0, 0)
   }
 
   // null = ainda carregando; undefined = primeiro uso, sem perfil.
@@ -62,6 +65,8 @@ export default function App() {
       <main id="conteudo" className="app">
         {telaAtual === 'hoje' && perfil ? (
           <Hoje perfil={perfil} avisar={avisar} />
+        ) : telaAtual === 'guia' && perfil ? (
+          <Guia perfil={perfil} />
         ) : (
           <PerfilTela
             perfil={perfil}
@@ -84,11 +89,19 @@ export default function App() {
               </button>
             </li>
             <li>
+              <button type="button" aria-current={telaAtual === 'guia' ? 'page' : undefined} onClick={() => ir('guia')}>
+                <span className="marcador" aria-hidden="true">
+                  <BookOpen size={22} />
+                </span>
+                Guia
+              </button>
+            </li>
+            <li>
               <button type="button" aria-current={telaAtual === 'perfil' ? 'page' : undefined} onClick={() => ir('perfil')}>
                 <span className="marcador" aria-hidden="true">
                   <UserRound size={22} />
                 </span>
-                Perfil e metas
+                Perfil
               </button>
             </li>
           </ul>

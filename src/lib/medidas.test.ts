@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ALIMENTOS } from './alimentos'
+import { ALIMENTOS, buscarAlimentos } from './alimentos'
 import { medidaPadrao, medidasIBGE } from './medidas'
 
 describe('medidas do IBGE', () => {
@@ -18,6 +18,11 @@ describe('medidas do IBGE', () => {
     const cru = ALIMENTOS.find((a) => a.nome === 'Arroz, tipo 1, cru')!
     expect(medidasIBGE(cru.id)).toEqual([])
     expect(medidaPadrao([])).toBe(-1)
+  })
+
+  it('mede purê de batata pela batata cozida', () => {
+    expect(medidasIBGE(91)).toContainEqual({ nome: 'Colher de sopa de purê', gramas: 45, desc: 'Purê de batata - colher de sopa cheia' })
+    expect(buscarAlimentos('pure batata')[0].id).toBe(91)
   })
 
   it('só aponta para alimentos que existem e com peso positivo', () => {

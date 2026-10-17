@@ -203,6 +203,17 @@ for ids, item, prep in R:
         if vistas:
             saida[str(i)] = [{'nome': k, 'gramas': g, 'desc': d} for k, (g, d) in sorted(vistas.items(), key=lambda x: x[1][0])]
 
+# A TACO não tem purê. O purê de batata do IBGE vira medida extra da batata cozida
+# ("Colher de sopa de purê"): os nutrientes são os da batata; manteiga e leite se registram à parte.
+PURES = [(91, 'Purê de batata')]
+for i, item in PURES:
+    extras = {}
+    for o in por_item[item]:
+        if vale(o, i):
+            extras.setdefault(o['medida'] + ' de purê', (o['gramas'], o['desc'].strip()))
+    lista = saida.setdefault(str(i), [])
+    lista += [{'nome': k, 'gramas': g, 'desc': d} for k, (g, d) in sorted(extras.items(), key=lambda x: x[1][0])]
+
 json.dump(saida, open(SAIDA, 'w'), ensure_ascii=False, separators=(',', ':'))
 print('alimentos com medida:', len(saida), 'medidas:', sum(len(v) for v in saida.values()))
 print('faltam:', faltam)

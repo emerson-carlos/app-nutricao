@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Apple, ChevronLeft, ChevronRight, Coffee, Cookie, GlassWater, Minus, Moon, Plus, Soup, UtensilsCrossed, X, type LucideIcon } from 'lucide-react'
+import { Apple, ChevronDown, ChevronLeft, ChevronRight, Coffee, Cookie, GlassWater, Minus, Moon, Plus, Soup, UtensilsCrossed, X, type LucideIcon } from 'lucide-react'
 import { useState, type CSSProperties } from 'react'
 import { calcularMetas } from '../lib/calc'
 import { alimento, nutrientesDe, somar, ZERO, type Alimento, type Nutrientes } from '../lib/alimentos'
@@ -7,7 +7,26 @@ import { db, hojeISO, REFEICOES, type PerfilSalvo, type Refeicao, type Registro 
 import { AdicionarAlimento } from './AdicionarAlimento'
 import type { Avisar } from '../App'
 
-const COPO_ML = 250
+// Tamanhos de copo mais comuns. O último escolhido fica salvo neste aparelho.
+const COPOS = [200, 250, 300, 400, 500]
+const OUTRO = 0
+
+function lerCopo(): number {
+  try {
+    const v = Number(localStorage.getItem('copo-ml'))
+    return v > 0 ? v : 250
+  } catch {
+    return 250
+  }
+}
+
+function salvarCopo(ml: number) {
+  try {
+    localStorage.setItem('copo-ml', String(ml))
+  } catch {
+    // sem armazenamento (aba anônima): só não lembra o tamanho
+  }
+}
 
 const ICONES: Record<Refeicao, LucideIcon> = {
   'Café da manhã': Coffee,
@@ -32,6 +51,7 @@ function nomeDoDia(data: string): string {
 }
 
 const fmt = (n: number) => Math.round(n).toLocaleString('pt-BR')
+const fmt1 = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })
 const fracao = (valor: number, meta: number) => Math.min(1, meta > 0 ? valor / meta : 0)
 
 // Faixa de ±10% em volta da meta: as estimativas não têm precisão maior que isso.
@@ -90,6 +110,22 @@ export function Hoje({ perfil, avisar }: Props) {
     porRefeicao.set(r.refeicao, [...(porRefeicao.get(r.refeicao) ?? []), { r, a }])
   }
   const aguaMl = agua?.ml ?? 0
+  const [copo, setCopo] = useState(lerCopo)
+  const [modoOutro, setModoOutro] = useState(() => !COPOS.includes(lerCopo()))
+  const [outro, setOutro] = useState(() => String(lerCopo()))
+  const opcaoCopo = modoOutro ? OUTRO : copo
+  const copoMl = modoOutro ? Number(outro) || 0 : copo
+
+  function escolherCopo(ml: number) {
+    if (ml === OUTRO) {
+      setModoOutro(true)
+      setOutro(String(copo))
+      return
+    }
+    setModoOutro(false)
+    setCopo(ml)
+    salvarCopo(ml)
+  }
 
   async function mudarAgua(delta: number) {
     const ml = Math.max(0, aguaMl + delta)
@@ -102,13 +138,26 @@ export function Hoje({ perfil, avisar }: Props) {
     avisar(`${alimento(r.alimentoId)?.nome ?? 'Alimento'} removido.`, () => db.registros.add(r))
   }
 
-  const linhas: { nome: string; cor: string; valor: number; meta: number; tipo: 'meta' | 'minimo' | 'maximo' }[] = [
-    { nome: 'Proteína', cor: 'var(--prot)', valor: total.prot, meta: metas.proteinaG, tipo: 'meta' },
-    { nome: 'Carboidrato', cor: 'var(--carb)', valor: total.carb, meta: metas.carboidratoG, tipo: 'meta' },
-    { nome: 'Gordura', cor: 'var(--gord)', valor: total.gord, meta: metas.gorduraG, tipo: 'meta' },
-    { nome: 'Fibras', cor: 'var(--fibra)', valor: total.fibra, meta: metas.fibraG, tipo: 'minimo' },
-    { nome: 'Gordura saturada', cor: 'var(--sat)', valor: total.sat, meta: metas.gorduraSaturadaMaxG, tipo: 'maximo' },
+  const linhas: { chave: keyof Nutrientes; nome: string; cor: string; valor: number; meta: number; tipo: 'meta' | 'minimo' | 'maximo' }[] = [
+    { chave: 'prot', nome: 'Proteína', cor: 'var(--prot)', valor: total.prot, meta: metas.proteinaG, tipo: 'meta' },
+    { chave: 'carb', nome: 'Carboidrato', cor: 'var(--carb)', valor: total.carb, meta: metas.carboidratoG, tipo: 'meta' },
+    { chave: 'gord', nome: 'Gordura', cor: 'var(--gord)', valor: total.gord, meta: metas.gorduraG, tipo: 'meta' },
+    { chave: 'fibra', nome: 'Fibras', cor: 'var(--fibra)', valor: total.fibra, meta: metas.fibraG, tipo: 'minimo' },
+    { chave: 'sat', nome: 'Gordura saturada', cor: 'var(--sat)', valor: total.sat, meta: metas.gorduraSaturadaMaxG, tipo: 'maximo' },
   ]
+
+  // De onde veio cada nutriente: soma por alimento (o mesmo alimento em duas refeições vira uma linha).
+  function origem(chave: keyof Nutrientes) {
+    const porAlimento = new Map<number, { nome: string; gramas: number; valor: number }>()
+    for (const itens of porRefeicao.values())
+      for (const { r, a } of itens) {
+        const atual = porAlimento.get(a.id) ?? { nome: a.nome, gramas: 0, valor: 0 }
+        atual.gramas += r.gramas
+        atual.valor += nutrientesDe(a, r.gramas)[chave]
+        porAlimento.set(a.id, atual)
+      }
+    return [...porAlimento.values()].filter((x) => x.valor >= 0.05).sort((x, y) => y.valor - x.valor)
+  }
 
   return (
     <>
@@ -154,17 +203,41 @@ export function Hoje({ perfil, avisar }: Props) {
               </dl>
             </div>
             <div className="nutrientes">
-              {linhas.map((l) => (
-                <div className="nutriente" key={l.nome} style={{ '--cor': l.cor } as CSSProperties}>
-                  <p className="rotulo">
-                    <span>{l.nome}</span>
-                    <span>
-                      {fmt(l.valor)} {l.tipo === 'minimo' ? 'de pelo menos' : l.tipo === 'maximo' ? 'de no máximo' : 'de'} {fmt(l.meta)} g
-                    </span>
-                  </p>
-                  <Barra valor={l.valor} meta={l.meta} />
-                </div>
-              ))}
+              <p className="ajuda">Toque num nutriente para ver de quais alimentos ele veio.</p>
+              {linhas.map((l) => {
+                const fontes = origem(l.chave)
+                return (
+                  <details className="nutriente" key={l.nome} style={{ '--cor': l.cor } as CSSProperties}>
+                    <summary>
+                      <span className="rotulo">
+                        <span>{l.nome}</span>
+                        <span>
+                          {fmt(l.valor)} {l.tipo === 'minimo' ? 'de pelo menos' : l.tipo === 'maximo' ? 'de no máximo' : 'de'} {fmt(l.meta)} g
+                          <ChevronDown size={18} aria-hidden="true" className="seta" />
+                        </span>
+                      </span>
+                      <Barra valor={l.valor} meta={l.meta} />
+                    </summary>
+                    {fontes.length === 0 ? (
+                      <p className="origem-vazia">Nenhum alimento registrado com {l.nome.toLowerCase()} hoje.</p>
+                    ) : (
+                      <ol className="origem" aria-label={`De onde veio ${l.nome.toLowerCase()}`}>
+                        {fontes.map((f) => (
+                          <li key={f.nome}>
+                            <span>
+                              {f.nome}
+                              <small>{fmt(f.gramas)} g</small>
+                            </span>
+                            <span>
+                              {fmt1(f.valor)} g<small>{Math.round((f.valor / l.valor) * 100)}%</small>
+                            </span>
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+                  </details>
+                )
+              })}
             </div>
           </>
         )}
@@ -179,7 +252,7 @@ export function Hoje({ perfil, avisar }: Props) {
           <p>
             {discreto ? (
               <>
-                <strong>{Math.round(aguaMl / COPO_ML)}</strong> de {Math.round(metas.aguaBeberMl / COPO_ML)} copos
+                <strong>{Math.round(aguaMl / (copoMl || 250))}</strong> de {Math.round(metas.aguaBeberMl / (copoMl || 250))} copos
               </>
             ) : (
               <>
@@ -189,12 +262,49 @@ export function Hoje({ perfil, avisar }: Props) {
           </p>
         </div>
         <Barra valor={aguaMl} meta={metas.aguaBeberMl} classe="agua" />
+        <fieldset className="copos">
+          <legend>Tamanho do copo</legend>
+          <div className="chips">
+            {[...COPOS, OUTRO].map((ml) => (
+              <label className="chip" key={ml}>
+                <input type="radio" name="copo" checked={opcaoCopo === ml} onChange={() => escolherCopo(ml)} />
+                {ml === OUTRO ? 'Outro' : `${ml} ml`}
+              </label>
+            ))}
+          </div>
+          {opcaoCopo === OUTRO && (
+            <div className="campo copo-outro">
+              <label htmlFor="copo-outro">Quantidade (ml)</label>
+              <input
+                id="copo-outro"
+                inputMode="numeric"
+                autoComplete="off"
+                value={outro}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, '').slice(0, 4)
+                  setOutro(v)
+                  if (Number(v) > 0) {
+                    setCopo(Number(v))
+                    salvarCopo(Number(v))
+                  }
+                }}
+              />
+            </div>
+          )}
+        </fieldset>
         <div className="agua-linha">
-          <button type="button" className="botao botao-icone" aria-label="Tirar um copo de água" disabled={aguaMl === 0} onClick={() => mudarAgua(-COPO_ML)}>
+          <button type="button" className="botao botao-icone" aria-label={`Tirar ${copoMl} ml de água`} disabled={aguaMl === 0 || copoMl === 0} onClick={() => mudarAgua(-copoMl)}>
             <Minus size={22} aria-hidden="true" />
           </button>
-          <button type="button" className="botao botao-agua" onClick={() => mudarAgua(COPO_ML)}>
-            <Plus size={20} aria-hidden="true" />1 copo (250 ml)
+          <button
+            type="button"
+            className="botao botao-agua"
+            aria-label={copoMl > 0 ? `Adicionar ${copoMl} ml de água` : undefined}
+            disabled={copoMl === 0}
+            onClick={() => mudarAgua(copoMl)}
+          >
+            <Plus size={20} aria-hidden="true" />
+            {copoMl > 0 ? `${copoMl} ml` : 'Informe os ml'}
           </button>
         </div>
       </section>
