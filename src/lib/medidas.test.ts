@@ -32,3 +32,12 @@ describe('medidas do IBGE', () => {
     expect(ids.size).toBe(ALIMENTOS.length)
   })
 })
+
+describe('peixe', () => {
+  it('buscar "peixe" acha os peixes da TACO, sem camarão', () => {
+    const nomes = buscarAlimentos('peixe', 100).map((a) => a.nome)
+    expect(nomes).toContain('Merluza, filé, assado')
+    expect(nomes.some((n) => n.startsWith('Camarão'))).toBe(false)
+    expect(buscarAlimentos('peixe assado').map((a) => a.nome)).toContain('Merluza, filé, assado')
+  })
+})

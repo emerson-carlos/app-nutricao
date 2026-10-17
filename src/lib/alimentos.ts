@@ -37,7 +37,10 @@ export function apelido(id: number): string | undefined {
   return APELIDOS[id]
 }
 
-const textoBusca = (a: Alimento) => normalizar(a.nome + ' ' + (APELIDOS[a.id] ?? ''))
+// Na TACO os peixes aparecem pelo nome (merluza, pescada…), sem a palavra "peixe". Assim, buscar "peixe" acha todos.
+const ehPeixe = (a: Alimento) => a.grupo.startsWith('Pescados') && !/camar|carangu|lula|marisco|polvo|siri|mexilh|ostra/i.test(a.nome)
+
+const textoBusca = (a: Alimento) => normalizar([a.nome, APELIDOS[a.id], ehPeixe(a) && 'peixe'].filter(Boolean).join(' '))
 
 let indice = ALIMENTOS.map((a) => ({ a, texto: textoBusca(a) }))
 

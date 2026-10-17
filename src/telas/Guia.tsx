@@ -43,7 +43,7 @@ const REFEICOES: { chave: keyof typeof EXEMPLOS; titulo: string; texto: string }
     chave: 'jantar',
     titulo: 'Jantar',
     texto:
-      'Mesma lógica do almoço. Se preferir algo mais leve, diminua o carboidrato e mantenha a proteína e os legumes.',
+      'Mesma lógica do almoço. Peixe é uma ótima proteína para a janta: o branco (merluza, pescada, corvina) é magro, e os gordos (salmão, sardinha) trazem ômega-3. Se preferir algo mais leve, diminua o carboidrato e mantenha a proteína e os legumes.',
   },
 ]
 

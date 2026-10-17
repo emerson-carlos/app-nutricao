@@ -14,6 +14,7 @@ const FONTES: Record<'prot' | 'carb' | 'fibra' | 'sat', Porcao[]> = {
     [326, 'Colher de arroz/servir'],
     [488, 'Unidade', 2],
     [277, 'Colher de sopa', 3],
+    [319, 'Unidade', 2],
     [461, 'Fatia'],
     [448, 'Copo americano'],
     [459, 'Colher de sopa', 2],
@@ -94,7 +95,7 @@ export const EXEMPLOS: Record<'cafe' | 'almoco' | 'lanche' | 'jantar', Porcao[]>
   ],
   jantar: [
     [88, 'Fatia', 2],
-    [377, 'Bife'],
+    [301, 'Filé'],
     [100, 'Pires'],
     [157, 'Unidade'],
   ],
