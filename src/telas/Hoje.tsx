@@ -3,7 +3,8 @@ import { Apple, ChevronDown, ChevronLeft, ChevronRight, Coffee, Cookie, GlassWat
 import { useState, type CSSProperties } from 'react'
 import { calcularMetas } from '../lib/calc'
 import { alimento, nutrientesDe, somar, ZERO, type Alimento, type Nutrientes } from '../lib/alimentos'
-import { db, hojeISO, REFEICOES, type PerfilSalvo, type Refeicao, type Registro } from '../lib/db'
+import { db, deslocarDia, hojeISO, REFEICOES, type PerfilSalvo, type Refeicao, type Registro } from '../lib/db'
+import { aguaExtraMl, gastoTreino, type Treino } from '../lib/treino'
 import { AdicionarAlimento } from './AdicionarAlimento'
 import type { Avisar } from '../App'
 
@@ -37,12 +38,6 @@ const ICONES: Record<Refeicao, LucideIcon> = {
   Ceia: Moon,
 }
 
-function deslocarDia(data: string, dias: number): string {
-  const d = new Date(data + 'T12:00:00')
-  d.setDate(d.getDate() + dias)
-  return hojeISO(d)
-}
-
 function nomeDoDia(data: string): string {
   const hoje = hojeISO()
   if (data === hoje) return 'Hoje'
@@ -59,6 +54,21 @@ function faixa(valor: number, meta: number): string {
   if (valor < meta * 0.9) return 'Abaixo da faixa'
   if (valor > meta * 1.1) return 'Acima da faixa'
   return 'Dentro da faixa'
+}
+
+// Saldo em palavras neutras: abaixo do gasto é o déficit planejado, acima não é erro.
+function Saldo({ saldo }: { saldo: number }) {
+  if (Math.abs(saldo) < 1) return <>Igual ao gasto</>
+  return (
+    <>
+      {fmt(Math.abs(saldo))} kcal<small>{saldo < 0 ? 'abaixo do gasto' : 'acima do gasto'}</small>
+    </>
+  )
+}
+
+function kcalDe(r: Registro): number {
+  const a = alimento(r.alimentoId)
+  return a ? nutrientesDe(a, r.gramas).kcal : 0
 }
 
 function Barra({ valor, meta, classe }: { valor: number; meta: number; classe?: string }) {
@@ -96,6 +106,21 @@ export function Hoje({ perfil, avisar }: Props) {
   const [adicionarEm, setAdicionarEm] = useState<Refeicao | null>(null)
   const registros = useLiveQuery(() => db.registros.where('data').equals(data).sortBy('criadoEm'), [data], [] as Registro[])
   const agua = useLiveQuery(() => db.agua.get(data), [data])
+  const treinos = useLiveQuery(() => db.treinos.where('data').equals(data).toArray(), [data], [] as Treino[])
+  // Os 7 dias antes do dia aberto, para a média da semana (o dia em andamento puxaria a média para baixo).
+  const anteriores = useLiveQuery(
+    async () => {
+      const inicio = deslocarDia(data, -7)
+      const fim = deslocarDia(data, -1)
+      const [regs, trs] = await Promise.all([
+        db.registros.where('data').between(inicio, fim, true, true).toArray(),
+        db.treinos.where('data').between(inicio, fim, true, true).toArray(),
+      ])
+      return { regs, trs }
+    },
+    [data],
+    { regs: [] as Registro[], trs: [] as Treino[] },
+  )
   const metas = calcularMetas(perfil)
   const discreto = perfil.modoDiscreto
   const ehHoje = data === hojeISO()
@@ -110,6 +135,18 @@ export function Hoje({ perfil, avisar }: Props) {
     porRefeicao.set(r.refeicao, [...(porRefeicao.get(r.refeicao) ?? []), { r, a }])
   }
   const aguaMl = agua?.ml ?? 0
+  const treinoKcal = treinos.reduce((s, t) => s + gastoTreino(t, perfil.pesoKg), 0)
+  const aguaExtra = aguaExtraMl(treinos.reduce((s, t) => s + t.minutos, 0))
+  const metaAgua = metas.aguaBeberMl + aguaExtra
+  const gastoDia = metas.gastoBase + treinoKcal
+
+  // Média só dos dias com refeição registrada: dia sem registro não quer dizer dia sem comer.
+  const comidoPorDia = new Map<string, number>()
+  for (const r of anteriores.regs) comidoPorDia.set(r.data, (comidoPorDia.get(r.data) ?? 0) + kcalDe(r))
+  const diasMedia = [...comidoPorDia.keys()]
+  const mediaComido = diasMedia.reduce((s, d) => s + comidoPorDia.get(d)!, 0) / (diasMedia.length || 1)
+  const mediaGasto =
+    metas.gastoBase + anteriores.trs.filter((t) => comidoPorDia.has(t.data)).reduce((s, t) => s + gastoTreino(t, perfil.pesoKg), 0) / (diasMedia.length || 1)
   const [copo, setCopo] = useState(lerCopo)
   const [modoOutro, setModoOutro] = useState(() => !COPOS.includes(lerCopo()))
   const [outro, setOutro] = useState(() => String(lerCopo()))
@@ -186,6 +223,9 @@ export function Hoje({ perfil, avisar }: Props) {
             <p>
               Proteína <span className="faixa">{total.prot >= metas.proteinaG * 0.9 ? 'Meta atingida' : 'Ainda falta um pouco'}</span>
             </p>
+            <p>
+              Treino <span className="faixa">{treinos.length ? 'Registrado' : 'Nenhum'}</span>
+            </p>
           </div>
         ) : (
           <>
@@ -243,6 +283,50 @@ export function Hoje({ perfil, avisar }: Props) {
         )}
       </section>
 
+      {!discreto && (
+        <section className="cartao" aria-labelledby="t-balanco">
+          <h2 id="t-balanco">Balanço</h2>
+          <dl className="metas-lista">
+            <dt>Comido</dt>
+            <dd>{fmt(total.kcal)} kcal</dd>
+            <dt>Gasto do dia, sem treino</dt>
+            <dd>{fmt(metas.gastoBase)} kcal</dd>
+            <dt>Treino</dt>
+            <dd>{treinos.length ? `+${fmt(treinoKcal)} kcal` : 'Nenhum'}</dd>
+            <dt>Saldo</dt>
+            <dd>
+              <Saldo saldo={total.kcal - gastoDia} />
+            </dd>
+          </dl>
+          {ehHoje && (
+            <p className="ajuda" style={{ marginTop: 8 }}>
+              O dia ainda não acabou, então o saldo muda conforme você registra.
+            </p>
+          )}
+          <h3 className="balanco-semana">Média dos 7 dias anteriores</h3>
+          {diasMedia.length === 0 ? (
+            <p className="ajuda">Registre as refeições por alguns dias para ver a média.</p>
+          ) : (
+            <>
+              <dl className="metas-lista">
+                <dt>Comido</dt>
+                <dd>{fmt(mediaComido)} kcal</dd>
+                <dt>Gasto, com treino</dt>
+                <dd>{fmt(mediaGasto)} kcal</dd>
+                <dt>Saldo</dt>
+                <dd>
+                  <Saldo saldo={mediaComido - mediaGasto} />
+                </dd>
+              </dl>
+              <p className="ajuda" style={{ marginTop: 8 }}>
+                {diasMedia.length === 1 ? 'Conta só 1 dia, o único com refeições registradas.' : `Conta os ${diasMedia.length} dias com refeições registradas.`} A média
+                diz mais que um dia sozinho.
+              </p>
+            </>
+          )}
+        </section>
+      )}
+
       <section className="cartao" aria-labelledby="t-agua">
         <div className="agua-topo">
           <h2 id="t-agua">
@@ -252,16 +336,17 @@ export function Hoje({ perfil, avisar }: Props) {
           <p>
             {discreto ? (
               <>
-                <strong>{Math.round(aguaMl / (copoMl || 250))}</strong> de {Math.round(metas.aguaBeberMl / (copoMl || 250))} copos
+                <strong>{Math.round(aguaMl / (copoMl || 250))}</strong> de {Math.round(metaAgua / (copoMl || 250))} copos
               </>
             ) : (
               <>
-                <strong>{(aguaMl / 1000).toLocaleString('pt-BR')} L</strong> de {(metas.aguaBeberMl / 1000).toLocaleString('pt-BR')} L
+                <strong>{(aguaMl / 1000).toLocaleString('pt-BR')} L</strong> de {(metaAgua / 1000).toLocaleString('pt-BR')} L
               </>
             )}
           </p>
         </div>
-        <Barra valor={aguaMl} meta={metas.aguaBeberMl} classe="agua" />
+        <Barra valor={aguaMl} meta={metaAgua} classe="agua" />
+        {aguaExtra > 0 && <p className="ajuda agua-extra">Inclui {fmt(aguaExtra)} ml a mais pelo treino.</p>}
         <fieldset className="copos">
           <legend>Tamanho do copo</legend>
           <div className="chips">

@@ -1,13 +1,21 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { BookOpen, House, UserRound } from 'lucide-react'
+import { BookOpen, Dumbbell, House, UserRound, type LucideIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { registrarProprios } from './lib/alimentos'
 import { db } from './lib/db'
 import { Guia } from './telas/Guia'
 import { Hoje } from './telas/Hoje'
 import { PerfilTela } from './telas/PerfilTela'
+import { Treino } from './telas/Treino'
 
-type Tela = 'hoje' | 'guia' | 'perfil'
+type Tela = 'hoje' | 'treino' | 'guia' | 'perfil'
+
+const ABAS: { tela: Tela; nome: string; Icone: LucideIcon }[] = [
+  { tela: 'hoje', nome: 'Hoje', Icone: House },
+  { tela: 'treino', nome: 'Treino', Icone: Dumbbell },
+  { tela: 'guia', nome: 'Guia', Icone: BookOpen },
+  { tela: 'perfil', nome: 'Perfil', Icone: UserRound },
+]
 
 export type Avisar = (texto: string, desfazer?: () => void) => void
 
@@ -15,6 +23,7 @@ export type Avisar = (texto: string, desfazer?: () => void) => void
 function telaDoEndereco(): Tela | null {
   if (location.hash === '#perfil') return 'perfil'
   if (location.hash === '#guia') return 'guia'
+  if (location.hash === '#treino') return 'treino'
   if (location.hash === '') return 'hoje'
   return null // outros #, como o do link "Pular para o conteúdo", não trocam de tela
 }
@@ -65,6 +74,8 @@ export default function App() {
       <main id="conteudo" className="app">
         {telaAtual === 'hoje' && perfil ? (
           <Hoje perfil={perfil} avisar={avisar} />
+        ) : telaAtual === 'treino' && perfil ? (
+          <Treino perfil={perfil} avisar={avisar} />
         ) : telaAtual === 'guia' && perfil ? (
           <Guia perfil={perfil} />
         ) : (
@@ -80,30 +91,16 @@ export default function App() {
       {!primeiroUso && (
         <nav className="navegacao" aria-label="Principal">
           <ul>
-            <li>
-              <button type="button" aria-current={telaAtual === 'hoje' ? 'page' : undefined} onClick={() => ir('hoje')}>
-                <span className="marcador" aria-hidden="true">
-                  <House size={22} />
-                </span>
-                Hoje
-              </button>
-            </li>
-            <li>
-              <button type="button" aria-current={telaAtual === 'guia' ? 'page' : undefined} onClick={() => ir('guia')}>
-                <span className="marcador" aria-hidden="true">
-                  <BookOpen size={22} />
-                </span>
-                Guia
-              </button>
-            </li>
-            <li>
-              <button type="button" aria-current={telaAtual === 'perfil' ? 'page' : undefined} onClick={() => ir('perfil')}>
-                <span className="marcador" aria-hidden="true">
-                  <UserRound size={22} />
-                </span>
-                Perfil
-              </button>
-            </li>
+            {ABAS.map(({ tela: t, nome, Icone }) => (
+              <li key={t}>
+                <button type="button" aria-current={telaAtual === t ? 'page' : undefined} onClick={() => ir(t)}>
+                  <span className="marcador" aria-hidden="true">
+                    <Icone size={22} />
+                  </span>
+                  {nome}
+                </button>
+              </li>
+            ))}
           </ul>
         </nav>
       )}

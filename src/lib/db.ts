@@ -1,6 +1,7 @@
 import Dexie, { type EntityTable } from 'dexie'
 import type { Alimento } from './alimentos'
 import type { Perfil } from './calc'
+import type { TipoTreino, Treino } from './treino'
 
 export const REFEICOES = ['Café da manhã', 'Lanche da manhã', 'Almoço', 'Lanche da tarde', 'Jantar', 'Ceia'] as const
 export type Refeicao = (typeof REFEICOES)[number]
@@ -36,6 +37,12 @@ export interface AlimentoProprio extends Alimento {
   criadoEm: number
 }
 
+// Plano da semana: o que você pretende treinar em cada dia (0 = domingo). Sem tipos = descanso.
+export interface DiaDoPlano {
+  dia: number
+  tipos: TipoTreino[]
+}
+
 export interface PerfilSalvo extends Perfil {
   id: 'eu'
   atualizadoEm: number
@@ -47,6 +54,8 @@ export const db = new Dexie('app-nutricao') as Dexie & {
   agua: EntityTable<Agua, 'data'>
   medidas: EntityTable<Medida, 'id'>
   alimentosProprios: EntityTable<AlimentoProprio, 'id'>
+  treinos: EntityTable<Treino, 'id'>
+  plano: EntityTable<DiaDoPlano, 'dia'>
 }
 
 db.version(1).stores({
@@ -60,26 +69,39 @@ db.version(2).stores({
   alimentosProprios: 'id, nome',
 })
 
+db.version(3).stores({
+  treinos: '++id, data',
+  plano: 'dia',
+})
+
 export function hojeISO(d = new Date()): string {
   const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
   return local.toISOString().slice(0, 10)
 }
 
+export function deslocarDia(data: string, dias: number): string {
+  const d = new Date(data + 'T12:00:00')
+  d.setDate(d.getDate() + dias)
+  return hojeISO(d)
+}
+
 export async function exportarBackup(): Promise<string> {
-  const [perfil, registros, agua, medidas, alimentosProprios] = await Promise.all([
+  const [perfil, registros, agua, medidas, alimentosProprios, treinos, plano] = await Promise.all([
     db.perfil.toArray(),
     db.registros.toArray(),
     db.agua.toArray(),
     db.medidas.toArray(),
     db.alimentosProprios.toArray(),
+    db.treinos.toArray(),
+    db.plano.toArray(),
   ])
-  return JSON.stringify({ app: 'app-nutricao', versao: 2, exportadoEm: new Date().toISOString(), perfil, registros, agua, medidas, alimentosProprios })
+  return JSON.stringify({ app: 'app-nutricao', versao: 3, exportadoEm: new Date().toISOString(), perfil, registros, agua, medidas, alimentosProprios, treinos, plano })
 }
 
 export async function importarBackup(texto: string): Promise<void> {
   const dados = JSON.parse(texto)
   if (dados?.app !== 'app-nutricao') throw new Error('Este arquivo não é um backup do app.')
-  const tabelas = [db.perfil, db.registros, db.agua, db.medidas, db.alimentosProprios]
+  const tabelas = [db.perfil, db.registros, db.agua, db.medidas, db.alimentosProprios, db.treinos, db.plano]
   await db.transaction('rw', tabelas, async () => {
     await Promise.all(tabelas.map((t) => t.clear()))
     await db.perfil.bulkPut(dados.perfil ?? [])
@@ -87,5 +109,7 @@ export async function importarBackup(texto: string): Promise<void> {
     await db.agua.bulkPut(dados.agua ?? [])
     await db.medidas.bulkPut(dados.medidas ?? [])
     await db.alimentosProprios.bulkPut(dados.alimentosProprios ?? [])
+    await db.treinos.bulkPut(dados.treinos ?? [])
+    await db.plano.bulkPut(dados.plano ?? [])
   })
 }

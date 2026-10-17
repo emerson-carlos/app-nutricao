@@ -691,6 +691,92 @@ a,
   font-size: 0.88rem;
 }
 
+/* Treino */
+.itens.treinos {
+  margin: 0 0 16px;
+}
+
+.itens.treinos li {
+  gap: 12px;
+  padding: 6px 0;
+}
+
+.botoes-treino {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.semana-total {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.dias-treino li span:first-child::first-letter {
+  text-transform: uppercase;
+}
+
+.plano {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.plano li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+}
+
+.plano li + li {
+  border-top: 1px solid var(--linha);
+}
+
+.plano-dia {
+  flex: none;
+  width: 40px;
+  font-weight: 700;
+}
+
+.plano fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+/* Linha de exercício: nome em cima, séries e repetições lado a lado com o botão de remover. */
+.exercicio {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0 12px;
+  align-items: end;
+  padding-bottom: 4px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--linha);
+}
+
+.exercicio > .campo:first-child {
+  grid-column: 1 / -1;
+  margin-bottom: 12px;
+}
+
+.exercicio > .botao {
+  margin-bottom: 20px;
+}
+
+.balanco-semana {
+  font-size: 1rem;
+  margin: 20px 0 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--linha);
+}
+
+.agua-extra {
+  margin-top: 8px;
+}
+
 /* Guia */
 .titulo-secao {
   font-size: 1.15rem;
@@ -809,6 +895,10 @@ fieldset.campo {
   margin: 0 0 16px;
 }
 
+fieldset.campo > legend {
+  margin-bottom: 8px;
+}
+
 .opcoes {
   display: grid;
   gap: 8px;
@@ -886,6 +976,13 @@ fieldset.campo {
   margin: 0;
   font-weight: 700;
   text-align: right;
+}
+
+.metas-lista dd small {
+  display: block;
+  font-weight: 400;
+  font-size: 0.85rem;
+  color: var(--tinta-suave);
 }
 
 /* Janela de adicionar alimento: folha que sobe de baixo, como no Android */
