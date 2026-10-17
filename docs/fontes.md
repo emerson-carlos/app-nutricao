@@ -17,4 +17,14 @@ Todos os números do app são estimativas (erro típico de 10% a 20%). O app nã
 
 ## Medidas caseiras
 
-A TACO não traz medidas caseiras. Por enquanto, cada medida (colher, concha, unidade) é informada por você uma vez e fica salva para aquele alimento. A ideia é importar depois a *Tabela de Medidas Referidas* do IBGE (POF 2008-2009) ou as medidas da TBCA (USP).
+A TACO não traz medidas caseiras. Elas vêm da *Tabela de Medidas Referidas para os Alimentos Consumidos no Brasil* (IBGE, POF 2008-2009), em `src/data/medidas-ibge.json`: 376 alimentos da TACO com cerca de 1.500 medidas.
+
+- O vínculo entre o alimento da TACO e o item do IBGE foi feito à mão (`scripts/ibge/gen.py`), porque a busca automática errava (ex.: "pão francês" caía em "fruta-pão").
+- A preparação (cozido, grelhado, frito…) vem do nome da TACO.
+- Só entra a medida cuja referência do IBGE descreve a própria medida. Ex.: "Colher de sopa" do arroz entra porque a referência é "Arroz cozido - colher de sopa cheia"; "Copo médio" de arroz, que o IBGE converteu para "prato fundo cheio", fica de fora. Copos e xícaras genéricos (só volume) valem apenas para bebidas.
+- Grãos e leguminosas crus ficam sem medida, porque o IBGE mede o alimento pronto.
+- O app mostra a referência do IBGE embaixo da medida escolhida.
+
+Você ainda pode criar a sua medida para qualquer alimento; ela aparece primeiro.
+
+Para gerar de novo: extraia o texto do PDF (`pdftotext liv50000.pdf`) e rode `python3 scripts/ibge/parse.py liv50000.txt` (grava `medidas_ibge.json` na pasta atual) e depois `python3 scripts/ibge/gen.py . src/data/taco.json src/data/medidas-ibge.json`.
